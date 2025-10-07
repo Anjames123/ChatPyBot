@@ -56,8 +56,20 @@ def main():
                 st.session_state.chatbot = ChatBot(provider=api_provider)
                 st.success(f"✅ Connected to {api_provider.upper()}")
             except Exception as e:
-                st.error(f"❌ Failed to connect to {api_provider.upper()}: {str(e)}")
-                st.info("Please check your API key configuration.")
+                error_str = str(e)
+                st.error(f"❌ Failed to connect to {api_provider.upper()}")
+                
+                # Provide helpful guidance based on error type
+                if "429" in error_str or "quota" in error_str.lower():
+                    st.warning("**API Quota Exceeded**")
+                    st.info(f"Your {api_provider.upper()} API key has exceeded its quota or rate limit. Please:\n"
+                            f"- Check your API usage at {'https://platform.openai.com/usage' if api_provider == 'openai' else 'https://console.anthropic.com/'}\n"
+                            f"- Add billing information to your account\n"
+                            f"- Or try the other AI provider option")
+                elif "api key" in error_str.lower() or "not found" in error_str.lower():
+                    st.info(f"Please make sure your {api_provider.upper()}_API_KEY is correctly configured in Secrets.")
+                else:
+                    st.info(f"Error details: {error_str}")
         
         # Display current model info
         if st.session_state.chatbot:

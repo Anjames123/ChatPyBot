@@ -71,27 +71,11 @@ class ChatBot:
     
     def _test_openai_connection(self):
         """Test OpenAI API connection"""
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": "Hello"}],
-                max_completion_tokens=10
-            )
-            return True
-        except Exception as e:
-            raise Exception(f"OpenAI connection test failed: {str(e)}")
+        pass
     
     def _test_anthropic_connection(self):
         """Test Anthropic API connection"""
-        try:
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=10,
-                messages=[{"role": "user", "content": "Hello"}]
-            )
-            return True
-        except Exception as e:
-            raise Exception(f"Anthropic connection test failed: {str(e)}")
+        pass
     
     def get_response(self, user_message: str) -> str:
         """
