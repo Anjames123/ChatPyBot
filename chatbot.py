@@ -6,17 +6,34 @@ from datetime import datetime
 class ChatBot:
     """AI Chatbot class supporting OpenAI and Anthropic APIs"""
     
-    def __init__(self, provider: str = "openai"):
+    # Available models for each provider
+    OPENAI_MODELS = {
+        "GPT-5": "gpt-5",
+        "GPT-4o": "gpt-4o",
+        "GPT-4": "gpt-4",
+        "GPT-3.5 Turbo": "gpt-3.5-turbo"
+    }
+    
+    ANTHROPIC_MODELS = {
+        "Claude Sonnet 4": "claude-sonnet-4-20250514",
+        "Claude Opus 4": "claude-opus-4-20250514",
+        "Claude 3.5 Sonnet": "claude-3-5-sonnet-20241022"
+    }
+    
+    def __init__(self, provider: str = "openai", model: str = None, system_prompt: str = None):
         """
-        Initialize the chatbot with specified provider
+        Initialize the chatbot with specified provider and model
         
         Args:
             provider (str): Either "openai" or "anthropic"
+            model (str): Specific model to use (optional)
+            system_prompt (str): Custom system prompt (optional)
         """
         self.provider = provider.lower()
         self.conversation_history = []
         self.client = None
-        self.model = None
+        self.model = model
+        self.system_prompt = system_prompt or "You are a helpful AI assistant."
         
         if self.provider == "openai":
             self._initialize_openai()
@@ -35,9 +52,10 @@ class ChatBot:
                 raise ValueError("OPENAI_API_KEY environment variable is required")
             
             self.client = OpenAI(api_key=api_key)
-            # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
-            # do not change this unless explicitly requested by the user
-            self.model = "gpt-5"
+            
+            # Set model if not provided
+            if not self.model:
+                self.model = "gpt-5"
             
             # Test the connection
             self._test_openai_connection()
@@ -57,9 +75,10 @@ class ChatBot:
                 raise ValueError("ANTHROPIC_API_KEY environment variable is required")
             
             self.client = Anthropic(api_key=api_key)
-            # The newest Anthropic model is "claude-sonnet-4-20250514", not "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022" nor "claude-3-sonnet-20240229".
-            # If the user doesn't specify a model, always prefer using "claude-sonnet-4-20250514" as it is the latest model.
-            self.model = "claude-sonnet-4-20250514"
+            
+            # Set model if not provided
+            if not self.model:
+                self.model = "claude-sonnet-4-20250514"
             
             # Test the connection
             self._test_anthropic_connection()
@@ -125,7 +144,7 @@ class ChatBot:
         """Get response from OpenAI API"""
         try:
             # Prepare messages for OpenAI format
-            messages = []
+            messages = [{"role": "system", "content": self.system_prompt}]
             for msg in self.conversation_history:
                 if msg["role"] in ["user", "assistant"]:
                     messages.append({
@@ -159,6 +178,7 @@ class ChatBot:
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=2048,
+                system=self.system_prompt,
                 messages=messages
             )
             
