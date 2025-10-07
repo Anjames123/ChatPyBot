@@ -1,5 +1,17 @@
 import os
 import sys
+# Attempt to load a local .env file in development. This is optional and
+# won't raise if python-dotenv isn't installed. Keeping credentials out of
+# source is still recommended.
+try:
+    from dotenv import load_dotenv
+    # Only load if a .env file exists in the project root
+    dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+    if os.path.exists(dotenv_path):
+        load_dotenv(dotenv_path)
+except Exception:
+    # If python-dotenv isn't installed or fails, continue silently.
+    pass
 from typing import List, Dict, Any
 from datetime import datetime
 
@@ -230,12 +242,15 @@ class ChatBot:
             from google.genai import types
             
             # Build conversation with system instruction
+            # Gemini expects roles like 'user' and 'model' (not 'assistant'),
+            # so map our 'assistant' role to 'model'.
             contents = []
             for msg in self.conversation_history:
                 if msg["role"] in ["user", "assistant"]:
+                    gemini_role = "model" if msg["role"] == "assistant" else "user"
                     contents.append(
                         types.Content(
-                            role=msg["role"],
+                            role=gemini_role,
                             parts=[types.Part(text=msg["content"])]
                         )
                     )

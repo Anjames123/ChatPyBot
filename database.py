@@ -29,11 +29,17 @@ class DatabaseManager:
     """Manage database connections and operations"""
     
     def __init__(self):
+        # Use DATABASE_URL if provided; otherwise default to a local SQLite file.
         database_url = os.getenv("DATABASE_URL")
         if not database_url:
-            raise ValueError("DATABASE_URL environment variable is required")
-        
-        self.engine = create_engine(database_url)
+            database_url = f"sqlite:///./chatbot.db"
+
+        # For SQLite ensure check_same_thread is disabled for multithreaded webservers
+        connect_args = {}
+        if database_url.startswith("sqlite"):
+            connect_args = {"check_same_thread": False}
+
+        self.engine = create_engine(database_url, connect_args=connect_args)
         Base.metadata.create_all(self.engine)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
