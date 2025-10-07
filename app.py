@@ -228,20 +228,27 @@ def main():
         st.header("⚙️ Configuration")
         
         # API Provider selection
+        provider_options = ["openai", "anthropic", "gemini"]
+        provider_index = provider_options.index(st.session_state.api_provider) if st.session_state.api_provider in provider_options else 0
+        
         api_provider = st.selectbox(
             "Choose AI Provider:",
-            ["openai", "anthropic"],
-            index=0 if st.session_state.api_provider == "openai" else 1,
-            key="api_provider_select"
+            provider_options,
+            index=provider_index,
+            key="api_provider_select",
+            format_func=lambda x: f"{x.upper()} {'(FREE)' if x == 'gemini' else ''}"
         )
         
         # Model selection based on provider
         if api_provider == "openai":
             model_options = list(ChatBot.OPENAI_MODELS.keys())
             default_model = "GPT-5"
-        else:
+        elif api_provider == "anthropic":
             model_options = list(ChatBot.ANTHROPIC_MODELS.keys())
             default_model = "Claude Sonnet 4"
+        else:  # gemini
+            model_options = list(ChatBot.GEMINI_MODELS.keys())
+            default_model = "Gemini 2.5 Flash"
         
         selected_model_name = st.selectbox(
             "Choose Model:",
@@ -253,8 +260,10 @@ def main():
         # Get actual model ID
         if api_provider == "openai":
             selected_model = ChatBot.OPENAI_MODELS[selected_model_name]
-        else:
+        elif api_provider == "anthropic":
             selected_model = ChatBot.ANTHROPIC_MODELS[selected_model_name]
+        else:  # gemini
+            selected_model = ChatBot.GEMINI_MODELS[selected_model_name]
         
         # System prompt customization
         with st.expander("🎯 System Prompt (Advanced)", expanded=False):

@@ -20,12 +20,18 @@ class ChatBot:
         "Claude 3.5 Sonnet": "claude-3-5-sonnet-20241022"
     }
     
+    GEMINI_MODELS = {
+        "Gemini 2.5 Flash": "gemini-2.5-flash",
+        "Gemini 2.5 Pro": "gemini-2.5-pro",
+        "Gemini 2.0 Flash": "gemini-2.0-flash-preview"
+    }
+    
     def __init__(self, provider: str = "openai", model: str = None, system_prompt: str = None):
         """
         Initialize the chatbot with specified provider and model
         
         Args:
-            provider (str): Either "openai" or "anthropic"
+            provider (str): Either "openai", "anthropic", or "gemini"
             model (str): Specific model to use (optional)
             system_prompt (str): Custom system prompt (optional)
         """
@@ -39,6 +45,8 @@ class ChatBot:
             self._initialize_openai()
         elif self.provider == "anthropic":
             self._initialize_anthropic()
+        elif self.provider == "gemini":
+            self._initialize_gemini()
         else:
             raise ValueError(f"Unsupported provider: {provider}")
     
@@ -96,6 +104,33 @@ class ChatBot:
         """Test Anthropic API connection"""
         pass
     
+    def _initialize_gemini(self):
+        """Initialize Gemini client and model"""
+        try:
+            from google import genai
+            
+            api_key = os.getenv("GEMINI_API_KEY")
+            if not api_key:
+                raise ValueError("GEMINI_API_KEY environment variable is required")
+            
+            self.client = genai.Client(api_key=api_key)
+            
+            # Set model if not provided
+            if not self.model:
+                self.model = "gemini-2.5-flash"
+            
+            # Test the connection
+            self._test_gemini_connection()
+            
+        except ImportError:
+            raise ImportError("Google GenAI package is required. Please install it.")
+        except Exception as e:
+            raise Exception(f"Failed to initialize Gemini: {str(e)}")
+    
+    def _test_gemini_connection(self):
+        """Test Gemini API connection"""
+        pass
+    
     def get_response(self, user_message: str) -> str:
         """
         Get AI response for user message
@@ -118,6 +153,8 @@ class ChatBot:
                 response = self._get_openai_response()
             elif self.provider == "anthropic":
                 response = self._get_anthropic_response()
+            elif self.provider == "gemini":
+                response = self._get_gemini_response()
             else:
                 raise ValueError(f"Unsupported provider: {self.provider}")
             
@@ -186,6 +223,36 @@ class ChatBot:
             
         except Exception as e:
             raise Exception(f"Anthropic API error: {str(e)}")
+    
+    def _get_gemini_response(self) -> str:
+        """Get response from Gemini API"""
+        try:
+            from google.genai import types
+            
+            # Build conversation with system instruction
+            contents = []
+            for msg in self.conversation_history:
+                if msg["role"] in ["user", "assistant"]:
+                    contents.append(
+                        types.Content(
+                            role=msg["role"],
+                            parts=[types.Part(text=msg["content"])]
+                        )
+                    )
+            
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=self.system_prompt,
+                    max_output_tokens=2048
+                )
+            )
+            
+            return response.text.strip() if response.text else ""
+            
+        except Exception as e:
+            raise Exception(f"Gemini API error: {str(e)}")
     
     def clear_history(self):
         """Clear conversation history"""
