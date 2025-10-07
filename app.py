@@ -9,8 +9,134 @@ from database import DatabaseManager
 st.set_page_config(
     page_title="AI Chatbot",
     page_icon="🤖",
-    layout="centered"
+    layout="wide"
 )
+
+# Custom CSS for better UI
+st.markdown("""
+    <style>
+    /* Main container styling */
+    .main {
+        padding: 2rem;
+    }
+    
+    /* Header styling */
+    h1 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 2.5rem !important;
+        font-weight: 800 !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    
+    [data-testid="stSidebar"] h2 {
+        color: #495057;
+        font-size: 1.3rem;
+        font-weight: 600;
+    }
+    
+    [data-testid="stSidebar"] h3 {
+        color: #6c757d;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-top: 1rem;
+    }
+    
+    /* Chat message styling */
+    [data-testid="stChatMessage"] {
+        background-color: #ffffff;
+        border-radius: 15px;
+        padding: 1.2rem;
+        margin: 0.8rem 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    [data-testid="stChatMessage"][data-testid*="user"] {
+        background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+        border-left: 4px solid #667eea;
+    }
+    
+    [data-testid="stChatMessage"][data-testid*="assistant"] {
+        background: linear-gradient(135deg, #f093fb15 0%, #f5576c15 100%);
+        border-left: 4px solid #f093fb;
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    /* Input styling */
+    [data-testid="stChatInput"] {
+        border-radius: 12px;
+    }
+    
+    /* Info boxes */
+    .stInfo {
+        background-color: #e3f2fd;
+        border-radius: 8px;
+    }
+    
+    .stSuccess {
+        background-color: #e8f5e9;
+        border-radius: 8px;
+    }
+    
+    .stWarning {
+        background-color: #fff3e0;
+        border-radius: 8px;
+    }
+    
+    .stError {
+        background-color: #ffebee;
+        border-radius: 8px;
+    }
+    
+    /* Expander styling */
+    [data-testid="stExpander"] {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+    
+    /* Metric styling */
+    [data-testid="stMetric"] {
+        background-color: #ffffff;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    /* File uploader */
+    [data-testid="stFileUploader"] {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    
+    /* Divider */
+    hr {
+        margin: 1.5rem 0;
+        border: none;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #dee2e6, transparent);
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 def initialize_session_state():
     """Initialize session state variables"""
@@ -88,8 +214,14 @@ def display_chat_messages():
 def main():
     initialize_session_state()
     
-    st.title("🤖 AI Chatbot")
-    st.markdown("Chat with AI using OpenAI or Anthropic models")
+    # Header with better styling
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.title("🤖 AI Chatbot")
+        st.markdown("**Powered by OpenAI & Anthropic** • Multi-model support with conversation history")
+    with col2:
+        if st.session_state.messages:
+            st.metric("💬 Messages", len(st.session_state.messages))
     
     # Sidebar for configuration
     with st.sidebar:
@@ -238,75 +370,93 @@ def main():
         if st.session_state.db:
             conversations = st.session_state.db.get_all_conversations()
             if conversations:
-                st.write("**Recent Conversations:**")
                 for conv in conversations[:5]:
-                    col1, col2 = st.columns([3, 1])
+                    is_active = st.session_state.current_conversation_id == conv.id
+                    button_type = "primary" if is_active else "secondary"
+                    
+                    col1, col2 = st.columns([4, 1])
                     with col1:
                         if st.button(
-                            f"📝 {conv.title}",
+                            f"{'🔵' if is_active else '📝'} {conv.title[:25]}..." if len(conv.title) > 25 else f"{'🔵' if is_active else '📝'} {conv.title}",
                             key=f"load_{conv.id}",
-                            use_container_width=True
+                            use_container_width=True,
+                            type=button_type
                         ):
                             load_conversation(conv.id)
                             st.rerun()
                     with col2:
-                        if st.button("🗑️", key=f"del_{conv.id}"):
+                        if st.button("🗑️", key=f"del_{conv.id}", type="secondary"):
                             st.session_state.db.delete_conversation(conv.id)
                             if st.session_state.current_conversation_id == conv.id:
                                 st.session_state.current_conversation_id = None
                                 st.session_state.messages = []
                             st.rerun()
+            else:
+                st.info("No saved conversations yet")
         
         st.markdown("---")
+        st.subheader("📤 Export & Actions")
         
         # Export conversation
         if st.session_state.messages:
-            export_data = export_conversation()
-            if export_data:
-                st.download_button(
-                    label="📥 Export Chat (JSON)",
-                    data=export_data,
-                    file_name=f"chat_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                    mime="application/json"
-                )
-                
+            col1, col2 = st.columns(2)
+            with col1:
+                export_data = export_conversation()
+                if export_data:
+                    st.download_button(
+                        label="📥 JSON",
+                        data=export_data,
+                        file_name=f"chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                        mime="application/json",
+                        use_container_width=True
+                    )
+            with col2:
                 # Export as text
                 text_export = "\n\n".join([
                     f"{msg['role'].upper()}: {msg['content']}" 
                     for msg in st.session_state.messages
                 ])
                 st.download_button(
-                    label="📄 Export Chat (TXT)",
+                    label="📄 TXT",
                     data=text_export,
-                    file_name=f"chat_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                    mime="text/plain"
+                    file_name=f"chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                    mime="text/plain",
+                    use_container_width=True
                 )
         
         # Clear conversation button
-        if st.button("🗑️ Clear Current Chat", type="secondary"):
+        if st.button("🗑️ Clear Current Chat", type="secondary", use_container_width=True):
             st.session_state.messages = []
             if st.session_state.chatbot:
                 st.session_state.chatbot.clear_history()
             st.rerun()
-        
-        # Display message count
-        if st.session_state.messages:
-            st.metric("Messages", len(st.session_state.messages))
     
     # Main chat interface
     st.markdown("---")
     
-    # Display current conversation info
+    # Display current conversation info in a nice container
     if st.session_state.current_conversation_id and st.session_state.db:
         conv = st.session_state.db.get_conversation(st.session_state.current_conversation_id)
         if conv:
-            st.caption(f"📝 {conv.title}")
+            st.markdown(f"**Current Conversation:** {conv.title}")
+            st.caption(f"Started: {conv.created_at.strftime('%B %d, %Y at %I:%M %p')}")
     
     # Display existing messages
     if st.session_state.messages:
         display_chat_messages()
     else:
-        st.info("👋 Start a conversation by typing a message below!")
+        # Enhanced empty state
+        st.markdown("""
+        <div style='text-align: center; padding: 3rem 0;'>
+            <h2 style='color: #667eea; margin-bottom: 1rem;'>👋 Welcome to AI Chatbot!</h2>
+            <p style='font-size: 1.1rem; color: #6c757d; margin-bottom: 1.5rem;'>
+                Start a conversation by typing your message below
+            </p>
+            <p style='color: #adb5bd;'>
+                💡 <strong>Tip:</strong> Upload a file in the sidebar to chat with context
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Chat input
     if prompt := st.chat_input("Type your message here..."):
